@@ -15,11 +15,13 @@ interface SpriteStore {
   addBox: (box: SpriteBox) => void;
   updateBox: (id: string, box: Partial<SpriteBox>) => void;
   deleteBox: (id: string) => void;
+  deleteBoxes: (ids: string[]) => void;
   clearBoxes: () => void;
   
   // Editor State
-  selectedBoxId: string | null;
-  setSelectedBoxId: (id: string | null) => void;
+  selectedBoxIds: string[];
+  setSelectedBoxIds: (ids: string[]) => void;
+  toggleSelectBoxId: (id: string) => void;
   toolMode: ToolMode;
   setToolMode: (mode: ToolMode) => void;
   
@@ -31,22 +33,37 @@ interface SpriteStore {
 export const useSpriteStore = create<SpriteStore>((set) => ({
   imageElement: null,
   imageFileName: '',
-  setImage: (img, fileName) => set({ imageElement: img, imageFileName: fileName, boxes: [], selectedBoxId: null }),
+  setImage: (img, fileName) => set({ imageElement: img, imageFileName: fileName, boxes: [], selectedBoxIds: [] }),
   
   boxes: [],
-  setBoxes: (boxes) => set({ boxes }),
-  addBox: (box) => set((state) => ({ boxes: [...state.boxes, box] })),
+  setBoxes: (boxes) => set({ boxes, selectedBoxIds: boxes.map((b) => b.id) }),
+  addBox: (box) => set((state) => ({ 
+    boxes: [...state.boxes, box],
+    selectedBoxIds: [...state.selectedBoxIds, box.id] // Auto select newly added boxes
+  })),
   updateBox: (id, updatedBox) => set((state) => ({
     boxes: state.boxes.map((box) => (box.id === id ? { ...box, ...updatedBox } : box)),
   })),
   deleteBox: (id) => set((state) => ({
     boxes: state.boxes.filter((box) => box.id !== id),
-    selectedBoxId: state.selectedBoxId === id ? null : state.selectedBoxId,
+    selectedBoxIds: state.selectedBoxIds.filter((boxId) => boxId !== id),
   })),
-  clearBoxes: () => set({ boxes: [], selectedBoxId: null }),
+  deleteBoxes: (ids) => set((state) => ({
+    boxes: state.boxes.filter((box) => !ids.includes(box.id)),
+    selectedBoxIds: state.selectedBoxIds.filter((boxId) => !ids.includes(boxId)),
+  })),
+  clearBoxes: () => set({ boxes: [], selectedBoxIds: [] }),
   
-  selectedBoxId: null,
-  setSelectedBoxId: (id) => set({ selectedBoxId: id }),
+  selectedBoxIds: [],
+  setSelectedBoxIds: (ids) => set({ selectedBoxIds: ids }),
+  toggleSelectBoxId: (id) => set((state) => {
+    const isSelected = state.selectedBoxIds.includes(id);
+    return {
+      selectedBoxIds: isSelected
+        ? state.selectedBoxIds.filter((boxId) => boxId !== id)
+        : [...state.selectedBoxIds, id]
+    };
+  }),
   
   toolMode: 'select',
   setToolMode: (mode) => set({ toolMode: mode }),

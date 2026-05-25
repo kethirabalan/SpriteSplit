@@ -6,7 +6,7 @@ import { detectSprites } from '../../lib/spriteDetector';
 import { exportToZip, exportSingleAsset } from '../../lib/zipExporter';
 
 export const Toolbar: React.FC = () => {
-  const { toolMode, setToolMode, selectedBoxId, deleteBox, imageElement, settings, setBoxes, boxes, imageFileName } = useSpriteStore();
+  const { toolMode, setToolMode, selectedBoxIds, deleteBoxes, imageElement, settings, setBoxes, boxes, imageFileName } = useSpriteStore();
   const [isDetecting, setIsDetecting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   
@@ -108,9 +108,9 @@ export const Toolbar: React.FC = () => {
       <Button
         variant="ghost"
         size="icon"
-        title="Delete Selected Box (Del)"
-        disabled={!selectedBoxId}
-        onClick={() => selectedBoxId && deleteBox(selectedBoxId)}
+        title="Delete Selected Boxes (Del)"
+        disabled={selectedBoxIds.length === 0}
+        onClick={() => selectedBoxIds.length > 0 && deleteBoxes(selectedBoxIds)}
         className="text-destructive/80 hover:text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer transition-all duration-300 disabled:opacity-30 disabled:pointer-events-none animate-in fade-in"
       >
         <Trash2 className="w-5 h-5" />

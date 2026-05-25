@@ -4,7 +4,7 @@ import Konva from 'konva';
 import { useSpriteStore } from '../../store/useSpriteStore';
 
 export const CanvasEditor: React.FC = () => {
-  const { imageElement, boxes, updateBox, selectedBoxId, setSelectedBoxId, toolMode, addBox, updateSettings, setToolMode } = useSpriteStore();
+  const { imageElement, boxes, updateBox, selectedBoxIds, setSelectedBoxIds, toggleSelectBoxId, deleteBoxes, toolMode, addBox, updateSettings, setToolMode } = useSpriteStore();
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   
@@ -32,20 +32,36 @@ export const CanvasEditor: React.FC = () => {
 
   useEffect(() => {
     if (transformerRef.current) {
-      if (selectedBoxId) {
+      if (selectedBoxIds.length > 0) {
         const stage = transformerRef.current.getStage();
-        const selectedNode = stage?.findOne(`#${selectedBoxId}`);
-        if (selectedNode) {
-          transformerRef.current.nodes([selectedNode]);
-          transformerRef.current.getLayer()?.batchDraw();
-        } else {
-          transformerRef.current.nodes([]);
-        }
+        const selectedNodes = selectedBoxIds
+          .map((id) => stage?.findOne(`#${id}`))
+          .filter((node): node is Konva.Node => node !== undefined);
+        
+        transformerRef.current.nodes(selectedNodes);
+        transformerRef.current.getLayer()?.batchDraw();
       } else {
         transformerRef.current.nodes([]);
       }
     }
-  }, [selectedBoxId]);
+  }, [selectedBoxIds]);
+
+  // Global Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input field (like the color picker)
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBoxIds.length > 0) {
+        deleteBoxes(selectedBoxIds);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedBoxIds, deleteBoxes]);
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -105,7 +121,7 @@ export const CanvasEditor: React.FC = () => {
     
     // Clicked on empty area - deselect
     if (e.target === e.target.getStage() || e.target.name() === 'backgroundImage') {
-      setSelectedBoxId(null);
+      setSelectedBoxIds([]);
       
       if (toolMode === 'add') {
         const stage = e.target.getStage();
@@ -191,12 +207,16 @@ export const CanvasEditor: React.FC = () => {
               width={box.width}
               height={box.height}
               fill="rgba(0, 150, 255, 0.2)"
-              stroke={selectedBoxId === box.id ? "#00f0ff" : "rgba(0, 150, 255, 0.8)"}
-              strokeWidth={selectedBoxId === box.id ? 2 / stageScale : 1 / stageScale}
-              draggable={toolMode === 'select' && selectedBoxId === box.id}
-              onClick={() => {
+              stroke={selectedBoxIds.includes(box.id) ? "#00f0ff" : "rgba(0, 150, 255, 0.8)"}
+              strokeWidth={selectedBoxIds.includes(box.id) ? 2 / stageScale : 1 / stageScale}
+              draggable={toolMode === 'select' && selectedBoxIds.includes(box.id)}
+              onClick={(e) => {
                 if (toolMode === 'select') {
-                  setSelectedBoxId(box.id);
+                  if (e.evt.ctrlKey || e.evt.shiftKey) {
+                    toggleSelectBoxId(box.id);
+                  } else {
+                    setSelectedBoxIds([box.id]);
+                  }
                 }
               }}
               onDragEnd={(e) => handleDragEnd(e, box.id)}
